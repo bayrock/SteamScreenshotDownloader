@@ -27,8 +27,18 @@ namespace SteamScreenshotDownloader
 
         static void Main(string[] args)
         {
+            var assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"Steam Screenshot Downloader, version: {assemblyVersion}");
+            Console.ResetColor();
+
             BaseDirectory = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "FromSteam");
 
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("To start, enter the steam account profile id");
+            Console.WriteLine("For example: If your profile url is https://steamcommunity.com/id/gabelogannewell, the profile id is 'gabelogannewell'");
+            Console.ResetColor();
             Console.Write("Enter Steam ID: ");
             var steamId = Console.ReadLine();
 
@@ -201,7 +211,19 @@ namespace SteamScreenshotDownloader
             var requestScreenshots = new List<SteamScreenshot>();
 
             const String fileDetailPattern = @"<div style=""background-image: url\('(?<ThumbnailUrl>.*?)'\);"" class=""imgWallItem.*?id=""imgWallItem_(?<FileId>\d{1,})";
-            var url = String.Format("http://steamcommunity.com/id/{0}/screenshots/?p={1}&sort=newestfirst&view=grid", steamId, pageNo);
+
+            var url = "";
+            var urlFormatString = GetAppSetting("ScreenshotGridUrlFormatString");
+
+            if (String.IsNullOrWhiteSpace(urlFormatString))
+            {
+                url = String.Format("https://steamcommunity.com/id/{0}/screenshots/?p={1}&sort=newestfirst&view=grid", steamId, pageNo);
+            }
+            else
+            {
+                url = String.Format(urlFormatString, steamId, pageNo);
+            }
+
             var webRequest = WebRequest.Create(url) as HttpWebRequest;
 
             using (var response = TryGetResponse(webRequest))
@@ -240,12 +262,32 @@ namespace SteamScreenshotDownloader
             return screenshots;
         }
 
+        private static String GetAppSetting(String key)
+        {
+            var value = System.Configuration.ConfigurationManager.AppSettings[key];
+
+            return value;
+        }
+
         private static String GetFileActualUrl(Int32 fileId)
         {
-            const String FileDetailUrlFormat = "http://steamcommunity.com/sharedfiles/filedetails/?id={0}";
-            const String ActualUrlPattern = @"href=""(?<Url>http://images.akamai.steamusercontent.com/ugc/.*?)""";
+            // Default Steam File Detail format string: https://steamcommunity.com/sharedfiles/filedetails/?id={0}
+            var fileDetailUrlFormatString = GetAppSetting("SteamFileDetailUrlFormatString");
 
-            var fileDetailUrl = String.Format(FileDetailUrlFormat, fileId);
+            if (String.IsNullOrWhiteSpace(fileDetailUrlFormatString))
+            {
+                fileDetailUrlFormatString = "https://steamcommunity.com/sharedfiles/filedetails/?id={0}";
+            }
+
+            // Default Screenshot Url Base: https://steamuserimages-a.akamaihd.net/ugc/
+            var screenshotUrlBase = GetAppSetting("DefaultScreenshotUrlBase");
+
+            if (String.IsNullOrWhiteSpace(screenshotUrlBase))
+            {
+                screenshotUrlBase = @"href=""(?<Url>https://steamuserimages-a.akamaihd.net/ugc/.*?)""";
+            }
+
+            var fileDetailUrl = String.Format(fileDetailUrlFormatString, fileId);
 
             var webRequest = WebRequest.Create(fileDetailUrl) as HttpWebRequest;
 
@@ -259,7 +301,7 @@ namespace SteamScreenshotDownloader
                     {
                         var html = streamReader.ReadToEnd();
 
-                        var actualFileUrlMatches = Regex.Matches(html, ActualUrlPattern, RegexOptions.IgnoreCase);
+                        var actualFileUrlMatches = Regex.Matches(html, screenshotUrlBase, RegexOptions.IgnoreCase);
 
                         if (actualFileUrlMatches.Count > 0)
                         {
