@@ -281,6 +281,7 @@ namespace SteamScreenshotDownloader
 
             // Default Screenshot Url Base: https://steamuserimages-a.akamaihd.net/ugc/
             var screenshotUrlBase = GetAppSetting("DefaultScreenshotUrlBase");
+            screenshotUrlBase = @"href =""(?<Url>" + screenshotUrlBase + @".*?)""";
 
             if (String.IsNullOrWhiteSpace(screenshotUrlBase))
             {
