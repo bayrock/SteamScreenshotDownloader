@@ -281,7 +281,7 @@ namespace SteamScreenshotDownloader
 
             // Default Screenshot Url Base: https://steamuserimages-a.akamaihd.net/ugc/
             var screenshotUrlBase = GetAppSetting("DefaultScreenshotUrlBase");
-            screenshotUrlBase = @"href =""(?<Url>" + screenshotUrlBase + @".*?)""";
+            screenshotUrlBase = @"href=""(?<Url>" + screenshotUrlBase + @".*?)""";
 
             if (String.IsNullOrWhiteSpace(screenshotUrlBase))
             {
@@ -306,7 +306,7 @@ namespace SteamScreenshotDownloader
 
                         if (actualFileUrlMatches.Count > 0)
                         {
-                            var match = actualFileUrlMatches[0];
+                            var match = actualFileUrlMatches[2];
                             var value = match.Groups["Url"].Value.Trim();
 
                             Console.WriteLine("Found screenshot url {0} for File Id: {1}", value, fileId);
