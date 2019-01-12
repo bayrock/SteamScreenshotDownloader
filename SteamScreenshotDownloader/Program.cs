@@ -103,52 +103,54 @@ namespace SteamScreenshotDownloader
 
                 using (var response = TryGetResponse(screenshotWebRequest))
                 {
-                    // TODO: Handle null responses...
-                    if (response != null)
+                // TODO: Handle null responses...
+                if (response == null)
+                    continue;
+
+                using (var stream = response.GetResponseStream())
                     {
-                        using (var stream = response.GetResponseStream())
+                        if (response.Headers.AllKeys.Any(x => x.Equals("Content-Disposition", StringComparison.OrdinalIgnoreCase)))
                         {
-                            if (response.Headers.AllKeys.Any(x => x.Equals("Content-Disposition", StringComparison.OrdinalIgnoreCase)))
+                            var fullDisposition = response.Headers["Content-Disposition"];
+                            var regexMatch = Regex.Match(fullDisposition, DispositionPattern);
+
+                            screenshot.ScreenshotFilename = String.Format("ss_{0}.jpg", screenshot.FileId); // Default to a filename, in case of uncaught exceptions
+
+                            if (regexMatch.Success)
                             {
-                                var fullDisposition = response.Headers["Content-Disposition"];
-                                var regexMatch = Regex.Match(fullDisposition, DispositionPattern);
+                                var fullFilename = regexMatch.Groups["Filename"].Value;
 
-                                if (regexMatch.Success)
-                                {
-                                    var fullFilename = regexMatch.Groups["Filename"].Value;
+                                // Underscores are used as folder separators, except the last one, which splits the date & time values
+                                var lastUnderscore = fullFilename.LastIndexOf('_');
 
-                                    // Underscores are used as folder separators, except the last one, which splits the date & time values
-                                    var lastUnderscore = fullFilename.LastIndexOf('_');
+                                fullFilename = fullFilename.Substring(0, lastUnderscore).Replace('_', '\\') + fullFilename.Substring(lastUnderscore, fullFilename.Length - lastUnderscore);
 
-                                    fullFilename = fullFilename.Substring(0, lastUnderscore).Replace('_', '\\') + fullFilename.Substring(lastUnderscore, fullFilename.Length - lastUnderscore);
-
-                                    screenshot.ScreenshotFilename = fullFilename;
-                                }
+                                screenshot.ScreenshotFilename = fullFilename;
                             }
-                            else
-                            {
-                                screenshot.ScreenshotFilename = String.Format("ss_{0}.jpg", screenshot.FileId);
-                            }
+                        }
+                        else
+                        {
+                            screenshot.ScreenshotFilename = String.Format("ss_{0}.jpg", screenshot.FileId);
+                        }
 
-                            var fullScreenshotFilePath = Path.Combine(BaseDirectory, screenshot.ScreenshotFilename);
-                            var fullScreenshotDirectoryPath = Path.GetDirectoryName(fullScreenshotFilePath);
+                        var fullScreenshotFilePath = Path.Combine(BaseDirectory, screenshot.ScreenshotFilename);
+                        var fullScreenshotDirectoryPath = Path.GetDirectoryName(fullScreenshotFilePath);
 
-                            if (!Directory.Exists(fullScreenshotDirectoryPath))
-                            {
-                                Directory.CreateDirectory(fullScreenshotDirectoryPath);
-                            }
+                        if (!Directory.Exists(fullScreenshotDirectoryPath))
+                        {
+                            Directory.CreateDirectory(fullScreenshotDirectoryPath);
+                        }
 
-                            using (var fileStream = new FileStream(fullScreenshotFilePath, FileMode.Create))
-                            {
-                                Console.WriteLine("Saving screenshot to {0}", fullScreenshotFilePath);
-                                stream.CopyTo(fileStream);
+                        using (var fileStream = new FileStream(fullScreenshotFilePath, FileMode.Create))
+                        {
+                            Console.WriteLine("Saving screenshot to {0}", fullScreenshotFilePath);
+                            stream.CopyTo(fileStream);
 
-                            }
                         }
                     }
                 }
 
-                if (String.IsNullOrWhiteSpace(screenshot.ThumbnailUrl))
+                /*if (String.IsNullOrWhiteSpace(screenshot.ThumbnailUrl))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Thumbnail Url is not valid for File Id: {0}", screenshot.FileId);
@@ -161,47 +163,47 @@ namespace SteamScreenshotDownloader
                 using (var response = TryGetResponse(thumbnailWebRequest))
                 {
                     // TODO: Handle null responses...
-                    if (response != null)
+                    if (response == null)
+                        continue;
+
+                    using (var stream = response.GetResponseStream())
                     {
-                        using (var stream = response.GetResponseStream())
+                        if (response.Headers.AllKeys.Any(x => x.Equals("Content-Disposition", StringComparison.OrdinalIgnoreCase)))
                         {
-                            if (response.Headers.AllKeys.Any(x => x.Equals("Content-Disposition", StringComparison.OrdinalIgnoreCase)))
+                            var fullDisposition = response.Headers["Content-Disposition"];
+                            var regexMatch = Regex.Match(fullDisposition, DispositionPattern);
+
+                            if (regexMatch.Success)
                             {
-                                var fullDisposition = response.Headers["Content-Disposition"];
-                                var regexMatch = Regex.Match(fullDisposition, DispositionPattern);
+                                var fullFilename = regexMatch.Groups["Filename"].Value;
 
-                                if (regexMatch.Success)
-                                {
-                                    var fullFilename = regexMatch.Groups["Filename"].Value;
+                                var lastUnderscore = fullFilename.LastIndexOf('_');
 
-                                    var lastUnderscore = fullFilename.LastIndexOf('_');
+                                fullFilename = fullFilename.Substring(0, lastUnderscore).Replace('_', '\\') + fullFilename.Substring(lastUnderscore, fullFilename.Length - lastUnderscore);
 
-                                    fullFilename = fullFilename.Substring(0, lastUnderscore).Replace('_', '\\') + fullFilename.Substring(lastUnderscore, fullFilename.Length - lastUnderscore);
-
-                                    screenshot.ThumbnailFilename = fullFilename;
-                                }
-                            }
-                            else
-                            {
-                                screenshot.ThumbnailFilename = String.Format("t_{0}.jpg", screenshot.FileId);
-                            }
-
-                            var fullScreenshotFilePath = Path.Combine(BaseDirectory, screenshot.ThumbnailFilename);
-                            var fullScreenshotDirectoryPath = Path.GetDirectoryName(fullScreenshotFilePath);
-
-                            if (!Directory.Exists(fullScreenshotDirectoryPath))
-                            {
-                                Directory.CreateDirectory(fullScreenshotDirectoryPath);
-                            }
-
-                            using (var fileStream = new FileStream(fullScreenshotFilePath, FileMode.Create))
-                            {
-                                Console.WriteLine("Saving thumbnail to {0}", fullScreenshotFilePath);
-                                stream.CopyTo(fileStream);
+                                screenshot.ThumbnailFilename = fullFilename;
                             }
                         }
+                        else
+                        {
+                            screenshot.ThumbnailFilename = String.Format("t_{0}.jpg", screenshot.FileId);
+                        }
+
+                        var fullScreenshotFilePath = Path.Combine(BaseDirectory, screenshot.ThumbnailFilename);
+                        var fullScreenshotDirectoryPath = Path.GetDirectoryName(fullScreenshotFilePath);
+
+                        if (!Directory.Exists(fullScreenshotDirectoryPath))
+                        {
+                            Directory.CreateDirectory(fullScreenshotDirectoryPath);
+                        }
+
+                        using (var fileStream = new FileStream(fullScreenshotFilePath, FileMode.Create))
+                        {
+                            Console.WriteLine("Saving thumbnail to {0}", fullScreenshotFilePath);
+                            stream.CopyTo(fileStream);
+                        }
                     }
-                }
+                }*/
             }
         }
 
@@ -228,27 +230,27 @@ namespace SteamScreenshotDownloader
 
             using (var response = TryGetResponse(webRequest))
             {
-                // TODO: Handle null responses...
-                if (response != null)
+            // TODO: Handle null responses...
+            if (response == null)
+                return new List<SteamScreenshot>();
+
+            using (var stream = response.GetResponseStream())
+                using (var streamReader = new StreamReader(stream))
                 {
-                    using (var stream = response.GetResponseStream())
-                    using (var streamReader = new StreamReader(stream))
+                    var html = streamReader.ReadToEnd();
+
+                    var fileIdMatches = Regex.Matches(html, fileDetailPattern, RegexOptions.IgnoreCase);
+
+                    for (int i = 0; i < fileIdMatches.Count; i++)
                     {
-                        var html = streamReader.ReadToEnd();
+                        var match = fileIdMatches[i];
+                        var fileIdValue = Int32.Parse(match.Groups["FileId"].Value.Trim());
+                        var thumbnailUrlValue = match.Groups["ThumbnailUrl"].Value.Trim();
+                        var newScreenshot = new SteamScreenshot { FileId = fileIdValue, ThumbnailUrl = thumbnailUrlValue };
 
-                        var fileIdMatches = Regex.Matches(html, fileDetailPattern, RegexOptions.IgnoreCase);
+                        Console.WriteLine("Added File Id: {0}, with Thumbnail Url: {1}", newScreenshot.FileId, newScreenshot.ThumbnailUrl);
 
-                        for (int i = 0; i < fileIdMatches.Count; i++)
-                        {
-                            var match = fileIdMatches[i];
-                            var fileIdValue = Int32.Parse(match.Groups["FileId"].Value.Trim());
-                            var thumbnailUrlValue = match.Groups["ThumbnailUrl"].Value.Trim();
-                            var newScreenshot = new SteamScreenshot { FileId = fileIdValue, ThumbnailUrl = thumbnailUrlValue };
-
-                            Console.WriteLine("Added File Id: {0}, with Thumbnail Url: {1}", newScreenshot.FileId, newScreenshot.ThumbnailUrl);
-
-                            requestScreenshots.Add(newScreenshot);
-                        }
+                        requestScreenshots.Add(newScreenshot);
                     }
                 }
             }
